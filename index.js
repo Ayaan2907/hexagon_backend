@@ -4,16 +4,20 @@ const cors = require('cors')
 const mysql = require("mysql");
 const APP_PORT = process.env.APP_PORT
 const indexRoute = require('./Routes/index')
-
+const handleDataInputRoute = require('./Routes/handleDataInput')
 
 const app = express();
 
+corsOptions = {
+    origin: 'http://localhost:3000',
+    optionsSuccessStatus: 200
+}
 
-app.use(cors())
+app.use(cors( corsOptions ))
 app.use(express.json())
 
 app.use('/', indexRoute)
-// app.use('/api/handleCsv', handleCsvRoute)
+app.use('/api', handleDataInputRoute)
 
 
 app.listen(APP_PORT, () => {
