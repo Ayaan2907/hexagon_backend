@@ -1,4 +1,6 @@
+const insertFileData = require('../Models/insertNewData');
 let FILE_DATA = {};
+
 const handleFileData = (req, res, db) => {
     if (req.body){
         FILE_DATA = req.body;
@@ -11,7 +13,6 @@ const handleFileData = (req, res, db) => {
     // const fileName = FILE_DATA.properties?.name.split("_");
     // console.log(fileName);
 };
-
 
 
 module.exports = {
