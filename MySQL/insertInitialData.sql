@@ -35,3 +35,11 @@ VALUES
     ("import_sw_ADAMS"),
     ("import_iges_adv"),
     ("import_iges_cb");
+
+
+INSERT INTO test_name_index(test_name)
+VALUES
+("step_spindelmutter"),
+("CenterWingBox");
+
+-- sample test name records,

@@ -1,10 +1,11 @@
 const pool = require('../config/databaseConfig');
 const INSERTION_QUERIES = {
     module_name_index: `INSERT IGNORE INTO module_name_index (module_name) VALUES (?)`,
+    test_name_index:`INSERT IGNORE INTO test_name_index (test_name) VALUES (?)`,
     subset_key_table: `INSERT INTO subset_key_table (cl_number, core_tech_flag, platform_type)VALUES (?,?,?)`,
     test_case_key_table: `INSERT INTO test_case_key_table (test_name, module_name_index, file_type) VALUES(?, ?, ?)`,
     module_comments: `INSERT INTO module_comments(module_name_index, unique_subset_key, comment_message)VALUES (?, ?, ?)`,
-    details: `INSERT INTO details ( id, unique_test_key, unique_subset_key, status, comment, criticality, severity, lp_error, solid_change_error, sheet_error, point_body_error) VALUES (?,?,?,?,?,?,?,?,?,?,? )`,
+    details_table: `INSERT INTO details ( unique_test_key, unique_subset_key, status, comment, criticality, severity, lp_error, solid_change_error, sheet_error, point_body_error) VALUES (?,?,?,?,?,?,?,?,?,?)`,
     // insertIntoErrorTables: {
     error_solid_change: `INSERT INTO error_solid_change (unique_test_key, unique_subset_key, baseline_values, current_values) VALUES (?,?,?,?)`,
     error_sheet_change: `INSERT INTO error_sheet_change (unique_test_key, unique_subset_key, baseline_values, current_values) VALUES (?,?,?,?)`,
