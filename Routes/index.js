@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
-const fetch = require("./handleDataFetching");
-const dataInput = require("./");
+const fetch = require("./fetchRecords");
+const dataInput = require("./inputFileData");
 
 router.get("/", (req, res) => {
     res.status(200).json("Hello World");
