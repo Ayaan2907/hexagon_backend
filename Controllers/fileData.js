@@ -1,5 +1,4 @@
-const insertFileData = require('../Models/insertNewData');
-const insertFunctions = require('../Controllers/insertRecords');
+const insertFunctions = require('./insertRecords');
 
 let FILE_DATA = {};
 
@@ -9,9 +8,8 @@ const handleFileData = (req, res, db) => {
         console.log(FILE_DATA);
         res.status(200).json("file data received");
         insertFunctions.insertIntoSubsetKeyTable(FILE_DATA);
-        // insertFunctions.insertIntoIndexingTables(FILE_DATA); // see comment in the function
-        insertFunctions.insertIntoTestCaseKeyTable(FILE_DATA);
-        insertFunctions.insertIntoDetailsTable(FILE_DATA);
+        insertFunctions.insertIntoIndexingTables(FILE_DATA);
+        insertFunctions.allInsertionOperations(FILE_DATA);
 
     } else {
         res.status(400).json("file data not received");

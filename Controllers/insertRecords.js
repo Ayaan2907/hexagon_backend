@@ -2,20 +2,21 @@ const insertFileData = require("../Models/insertNewData");
 const getIndex = require("../Models/getUniqueIndices");
 // const { FILE_DATA } = require("./fileData");
 
-let derivedProperties = {};
-const name = FILE_DATA.properties?.fileName.split("_");
-
-derivedProperties.cl_number = Number(name[1].slice(0, -1));
-derivedProperties.criticality = name[2];
-derivedProperties.platform_type = name[3].includes("win") ? 2 : 1; // as per the discussion for windows platform type 2 for linux its 1
+let fileSpecificProperties = {};
 
 const insertIntoSubsetKeyTable = async (FILE_DATA) => {
     // FIXME: function giving sql error TRUNCATED INCORRECT DOUBLE VALUE FOR 'cl_name'
-
+    const name = FILE_DATA.properties?.fileName.split("_");
+    
+    fileSpecificProperties.cl_number = Number(name[1].slice(0, -1));
+    fileSpecificProperties.criticality = name[2];
+    fileSpecificProperties.platform_type = name[3].includes("win") ? 2 : 1; // as per the discussion for windows platform type 2 for linux its 1
+    
+    
     const subsetKeyTableBody = [
-        derivedProperties.cl_number,
+        fileSpecificProperties.cl_number,
         0, // sample flag of coreTech
-        derivedProperties.platform_type,
+        fileSpecificProperties.platform_type,
     ];
 
     try {
@@ -74,140 +75,100 @@ const insertIntoIndexingTables = async (FILE_DATA) => {
     });
 };
 
-const insertIntoTestCaseKeyTable = async (FILE_DATA) => {
-    // test_case_key_table
-    let testCaseKeyTableBody = [];
-    let extractedFields = {};
-    FILE_DATA?.data.data.forEach(async (item) => {
-        extractedFields.moduleName = item.ModuleName;
-        extractedFields.testName = item.TestName;
-        extractedFields.fileType = item.FileType;
+const allInsertionOperations = async (FILE_DATA) => {
+    const getIndices = async (tableName, param) => {
+        try {
+            return await getIndex.getIndexByName(tableName, param);
+        } catch (err) {
+            console.log(err);
+        }
+    };
+
+    let rowSpecificProperties = {};
+    FILE_DATA?.data.data.map((row) => {
+        rowSpecificProperties.moduleName = row.ModuleName;
+        rowSpecificProperties.testName = row.TestName;
+        rowSpecificProperties.fileType = row.FileType;
+        rowSpecificProperties.Status = row.Status;
+        rowSpecificProperties.Severity = row.Severity;
+        (async () => {
+            rowSpecificProperties.subsetKey = await getIndices("subsetKeyTable", [
+                fileSpecificProperties.cl_number,
+            ]);
+            rowSpecificProperties.moduleIndex = await getIndices("moduleNameIndex", [
+                rowSpecificProperties.moduleName,
+            ]);
+            rowSpecificProperties.testIndex = await getIndices("testNameIndex", [
+                rowSpecificProperties.testName,
+            ]);
+            rowSpecificProperties.testCaseKey = await getIndices("testCaseKeyTable", [
+                rowSpecificProperties.testIndex,
+                rowSpecificProperties.moduleIndex,
+                rowSpecificProperties.fileType,
+            ]);
+        })();
+
+        const insertIntoTestCaseKeyTable = async () => {
+            // test_case_key_table
+
+            const testCaseKeyTableBody = [
+                rowSpecificProperties.testIndex,
+                rowSpecificProperties.moduleIndex,
+                rowSpecificProperties.fileType,
+            ];
+
+            try {
+                const result = await insertFileData.insertIntoTables(
+                    "test_case_key_table",
+                    testCaseKeyTableBody
+                );
+                console.log(result);
+            } catch (err) {
+                console.log(err);
+            }
+        };
+        insertIntoTestCaseKeyTable();
+
+        const insertIntoDetailsTable = async () => {
+            // details_table
+
+            const detailsTableBody = [
+                rowSpecificProperties.testCaseKey,
+                rowSpecificProperties.subsetKey,
+                rowSpecificProperties.Status,
+                "sample", //sample comment
+                fileSpecificProperties.criticality,
+                rowSpecificProperties.Severity,
+                "LP_errors",
+                1,
+                2,
+                3,
+            ];
+            /**
+             * LP_errors, solid, sheet, point body errors are still not calculated,
+             * complete the body of details table with the error values, currently adding sample values
+             */
+
+            try {
+                const result = await insertFileData.insertIntoTables(
+                    "details_table",
+                    detailsTableBody
+                );
+                console.log(result);
+            } catch (err) {
+                console.log(err);
+            }
+        };
+        insertIntoDetailsTable();
     });
-
-    // store index instead of names
-    try {
-        extractedFields.moduleIndex = await getIndex.getIndexByName(
-            "moduleNameIndex",
-            extractedFields.moduleName
-        );
-    } catch (err) {
-        console.log(err);
-    }
-
-    try {
-        extractedFields.testIndex = await getIndex.getIndexByName(
-            "testNameIndex",
-            extractedFields.testName
-        );
-    } catch (err) {
-        console.log(err);
-    }
-
-    testCaseKeyTableBody = [
-        extractedFields.testIndex,
-        extractedFields.moduleIndex,
-        extractedFields.fileType,
-    ];
-
-    try {
-        const result = await insertFileData.insertIntoTables(
-            "test_case_key_table",
-            testCaseKeyTableBody
-        );
-        console.log(result);
-    } catch (err) {
-        console.log(err);
-    }
 };
 
-const insertIntoDetailsTable = async (FILE_DATA) => {
-    // details_table
-    let extractedFields = {};
-    FILE_DATA?.data.data.forEach(async (item) => {
-        extractedFields.moduleName = item.ModuleName;
-        extractedFields.testName = item.TestName;
-        extractedFields.fileType = item.FileType;
-        extractedFields.Status = item.Status;
-        extractedFields.Severity = item.Severity;
-    });
-
-    // get subset key based on cl_number
-    try {
-        let clNumber = FILE_DATA.properties.fileName.split("_")[1];
-        clNumber = Number(clNumber.slice(0, -1));
-        extractedFields.subsetKey = await getIndex.getIndexByName(
-            "subsetKeyTable",
-            clNumber
-        );
-    } catch (err) {
-        console.log(err);
-    }
-
-    // get test case key based on module index and test index. So again first get the indices based on names
-    try {
-        extractedFields.moduleIndex = await getIndex.getIndexByName(
-            "moduleNameIndex",
-            extractedFields.moduleName
-        );
-    } catch (err) {
-        console.log(err);
-    }
-
-    try {
-        extractedFields.testIndex = await getIndex.getIndexByName(
-            "testNameIndex",
-            extractedFields.testName
-        );
-    } catch (err) {
-        console.log(err);
-    }
-
-    try {
-        extractedFields.testCaseKey = await getIndex.getIndexByName(
-            "testCaseKeyTable",
-            [
-                extractedFields.testIndex,
-                extractedFields.moduleIndex,
-                extractedFields.fileType,
-            ]
-        );
-    } catch (err) {
-        console.log(err);
-    }
-
-    detailsTableBody = [
-        extractedFields.testCaseKey,
-        extractedFields.subsetKey,
-        extractedFields.Status,
-        "sample", //sample comment
-        derivedProperties.criticality,
-        extractedFields.Severity,
-        /**
-         * LP_errors, solid, sheet, point body errors are still not calculated,
-         * complete the body of details table with the error values, currently adding sample values
-         */
-        "LP_errors",
-        1,
-        2,
-        3,
-    ];
-
-    try {
-        const result = await insertFileData.insertIntoTables(
-            "details_table",
-            detailsTableBody
-        );
-        console.log(result);
-    } catch (err) {
-        console.log(err);
-    }
-};
+// const insertIntoErrorSpecificTables = async () => {}
 
 // derrive and insert error values into details table and respective error tables
 
 module.exports = {
     insertIntoSubsetKeyTable,
-    insertIntoTestCaseKeyTable,
     insertIntoIndexingTables,
-    insertIntoDetailsTable,
+    allInsertionOperations,
 };
