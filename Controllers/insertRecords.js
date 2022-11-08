@@ -1,42 +1,8 @@
-const insertFileData = require("../Models/insertNewData");
-const getIndex = require("../Models/getUniqueIndices");
-// const { FILE_DATA } = require("./fileData");
+const { insertIntoTables } = require("../Models/insertNewData");
+const { getIndexByName } = require("../Models/getUniqueIndices");
 
 let fileSpecificProperties = {};
 
-const insertIntoSubsetKeyTable = async (FILE_DATA) => {
-    // FIXME: function giving sql error TRUNCATED INCORRECT DOUBLE VALUE FOR 'cl_name'
-    const name = FILE_DATA.properties?.fileName.split("_");
-    
-    fileSpecificProperties.cl_number = Number(name[1].slice(0, -1));
-    fileSpecificProperties.criticality = name[2];
-    fileSpecificProperties.platform_type = name[3].includes("win") ? 2 : 1; // as per the discussion for windows platform type 2 for linux its 1
-    
-    
-    const subsetKeyTableBody = [
-        fileSpecificProperties.cl_number,
-        0, // sample flag of coreTech
-        fileSpecificProperties.platform_type,
-    ];
-
-    try {
-        const result = await insertFileData.insertIntoTables(
-            "subset_key_table",
-            subsetKeyTableBody
-        );
-        console.log(result);
-    } catch (err) {
-        console.log(err);
-    }
-};
-
-/**
- * The below function can be completely ignored for icreasing the performance of the application,
- * by manually inserting the module name and test name data into indexing tables.
- * Because following function iterates in the whole file data and
- * for each index it inserts into DB and ignores if already exists.
- *
- */
 const insertIntoIndexingTables = async (FILE_DATA) => {
     // module_name_index, test_name_index tables
     let moduleNames = FILE_DATA?.data.data.map((item) => item.ModuleName);
@@ -49,39 +15,60 @@ const insertIntoIndexingTables = async (FILE_DATA) => {
     // insert into module_name_index table
     moduleNames.forEach(async (moduleName) => {
         const moduleNameIndexBody = [moduleName];
-        try {
-            const result = await insertFileData.insertIntoTables(
-                "module_name_index",
-                moduleNameIndexBody
-            );
-            console.log(result);
-        } catch (err) {
-            console.log(err);
-        }
-    });
-
-    // insert into test_name_index table
-    testNames.forEach(async (testName) => {
-        const testNameIndexBody = [testName];
-        try {
-            const result = await insertFileData.insertIntoTables(
-                "test_name_index",
-                testNameIndexBody
-            );
-            console.log(result);
-        } catch (err) {
-            console.log(err);
-        }
+        await insertIntoTables("module_name_index", moduleNameIndexBody)
+            .then((res) => {
+                // console.log(res);
+            })
+            .catch((err) => {
+                console.log(err);
+            });
     });
 };
 
+const insertIntoSubsetKeyTable = async (FILE_DATA) => {
+    // FIXME: function giving sql error TRUNCATED INCORRECT DOUBLE VALUE FOR 'cl_name'
+    // Resolve the error first to insert data.
+
+    const name = FILE_DATA.properties?.fileName.split("_");
+
+    fileSpecificProperties.cl_number = Number(name[1]);
+    fileSpecificProperties.criticality = Number(name[2]);
+    fileSpecificProperties.platform_type = name[3]?.includes("win") ? 2 : 1; // as per the discussion for windows platform type 2 for linux its 1
+    const subsetKeyTableBody = [
+        fileSpecificProperties.cl_number,
+        0, // sample flag of coreTech
+        fileSpecificProperties.platform_type,
+    ];
+    await insertIntoTables("subset_key_table", subsetKeyTableBody)
+        .then((res) => {
+            // console.log(res);
+        })
+        .catch((err) => {
+            console.log(err);
+        });
+};
+
+// insert into test_name_index table
+testNames.forEach(async (testName) => {
+    const testNameIndexBody = [testName];
+    await insertIntoTables("test_name_index", testNameIndexBody)
+        .then((res) => {
+            // console.log(res);
+        })
+        .catch((err) => {
+            console.log(err);
+        });
+});
+
 const allInsertionOperations = async (FILE_DATA) => {
     const getIndices = async (tableName, param) => {
-        try {
-            return await getIndex.getIndexByName(tableName, param);
-        } catch (err) {
-            console.log(err);
-        }
+        await getIndexByName(tableName, param)
+            .then((res) => {
+                return res;
+            })
+            .catch((err) => {
+                console.log(err);
+            });
     };
 
     let rowSpecificProperties = {};
@@ -92,20 +79,26 @@ const allInsertionOperations = async (FILE_DATA) => {
         rowSpecificProperties.Status = row.Status;
         rowSpecificProperties.Severity = row.Severity;
         (async () => {
-            rowSpecificProperties.subsetKey = await getIndices("subsetKeyTable", [
-                fileSpecificProperties.cl_number,
-            ]);
-            rowSpecificProperties.moduleIndex = await getIndices("moduleNameIndex", [
-                rowSpecificProperties.moduleName,
-            ]);
-            rowSpecificProperties.testIndex = await getIndices("testNameIndex", [
-                rowSpecificProperties.testName,
-            ]);
-            rowSpecificProperties.testCaseKey = await getIndices("testCaseKeyTable", [
-                rowSpecificProperties.testIndex,
-                rowSpecificProperties.moduleIndex,
-                rowSpecificProperties.fileType,
-            ]);
+            rowSpecificProperties.subsetKey = await getIndices(
+                "subsetKeyTable",
+                [fileSpecificProperties.cl_number]
+            );
+            rowSpecificProperties.moduleIndex = await getIndices(
+                "moduleNameIndex",
+                [rowSpecificProperties.moduleName]
+            );
+            rowSpecificProperties.testIndex = await getIndices(
+                "testNameIndex",
+                [rowSpecificProperties.testName]
+            );
+            rowSpecificProperties.testCaseKey = await getIndices(
+                "testCaseKeyTable",
+                [
+                    rowSpecificProperties.testIndex,
+                    rowSpecificProperties.moduleIndex,
+                    rowSpecificProperties.fileType,
+                ]
+            );
         })();
 
         const insertIntoTestCaseKeyTable = async () => {
@@ -117,15 +110,13 @@ const allInsertionOperations = async (FILE_DATA) => {
                 rowSpecificProperties.fileType,
             ];
 
-            try {
-                const result = await insertFileData.insertIntoTables(
-                    "test_case_key_table",
-                    testCaseKeyTableBody
-                );
-                console.log(result);
-            } catch (err) {
-                console.log(err);
-            }
+            await insertIntoTables("test_case_key_table", testCaseKeyTableBody)
+                .then((res) => {
+                    // console.log(res);
+                })
+                .catch((err) => {
+                    console.log(err);
+                });
         };
         insertIntoTestCaseKeyTable();
 
@@ -148,16 +139,13 @@ const allInsertionOperations = async (FILE_DATA) => {
              * LP_errors, solid, sheet, point body errors are still not calculated,
              * complete the body of details table with the error values, currently adding sample values
              */
-
-            try {
-                const result = await insertFileData.insertIntoTables(
-                    "details_table",
-                    detailsTableBody
-                );
-                console.log(result);
-            } catch (err) {
-                console.log(err);
-            }
+            await insertIntoTables("details_table", detailsTableBody)
+                .then((res) => {
+                    // console.log(res);
+                })
+                .catch((err) => {
+                    console.log(err);
+                });
         };
         insertIntoDetailsTable();
     });

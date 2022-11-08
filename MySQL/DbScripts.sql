@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS `rtest_analysis_tool`.`test_name_index` (
 -- subset key table
 CREATE TABLE IF NOT EXISTS `rtest_analysis_tool`.`subset_key_table`(
     `cl_number` INT(8) NOT NULL,
-    `core_tech_flag` BIT(1) NOT NULL DEFAULT 0,
+    `core_tech_flag` BIT(1) NOT NULL,
     `platform_type` INT NOT NULL,
     -- 1 for linux, 2 for windows
     `unique_subset_key` INT GENERATED ALWAYS AS ('cl_number' * 1000 + 'platform_type') STORED,

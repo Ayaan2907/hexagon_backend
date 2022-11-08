@@ -1,7 +1,7 @@
 module.exports = {
     // App config vars
     APP_PORT: "PORT number", 
-    ALLOWED_ORIGINS: ["http://localhost:3000", "*"],
+    ALLOWED_ORIGINS: "*",
     
     // Database config vars
     DB_HOST: "localhost",

@@ -20,4 +20,5 @@ app.use('/api', routerIndex)
 
 app.listen(APP_PORT, () => {
     console.log(`Server listening port ${APP_PORT}`)
+    console.log(`---------------------------------------`)
 });
