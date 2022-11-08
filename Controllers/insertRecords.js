@@ -23,6 +23,18 @@ const insertIntoIndexingTables = async (FILE_DATA) => {
                 console.log(err);
             });
     });
+
+    // insert into test_name_index table
+    testNames.forEach(async (testName) => {
+        const testNameIndexBody = [testName];
+        await insertIntoTables("test_name_index", testNameIndexBody)
+            .then((res) => {
+                // console.log(res);
+            })
+            .catch((err) => {
+                console.log(err);
+            });
+    });
 };
 
 const insertIntoSubsetKeyTable = async (FILE_DATA) => {
@@ -47,18 +59,6 @@ const insertIntoSubsetKeyTable = async (FILE_DATA) => {
             console.log(err);
         });
 };
-
-// insert into test_name_index table
-testNames.forEach(async (testName) => {
-    const testNameIndexBody = [testName];
-    await insertIntoTables("test_name_index", testNameIndexBody)
-        .then((res) => {
-            // console.log(res);
-        })
-        .catch((err) => {
-            console.log(err);
-        });
-});
 
 const allInsertionOperations = async (FILE_DATA) => {
     const getIndices = async (tableName, param) => {
